@@ -227,6 +227,7 @@ class Device(object):
         self._network = Network(ip, c2d_port, d2c_port, inb, outb, self)
         self._ackBuffer = ackBuffer
         self._nackBuffer = nackBuffer
+        self._urgBuffer = urgBuffer
         self._cmdBuffers = cmdBuffers
         self._state = State()
         self._common_init_product()

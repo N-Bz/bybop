@@ -40,7 +40,7 @@ if len (_err) > 0:
     sys.exit(1)
 
 
-class ARCommandError(Exception):
+class CommandError(Exception):
     def __init__(self, msg):
         self.value = msg
     def __str__(self):
@@ -99,7 +99,7 @@ def _struct_unpack(fmt, string):
             start = struct.calcsize(real_fmt)
             strlen = string[start:].find('\0')
             if strlen < 0:
-                raise ARCommandError('No null char in string')
+                raise CommandError('No null char in string')
             real_fmt += '%dsB' % strlen
             nbarg += 1
             null_idx.append(nbarg)
@@ -124,10 +124,10 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
     - *args  : Arguments of the command.
 
     If the project, the class or the command can not be found in the command table,
-    an ARCommandError will be raised.
+    a CommandError will be raised.
 
-    If the number and type of arguments in *arg do not match the expected ones, an
-    ARCommandError will be raised.
+    If the number and type of arguments in *arg do not match the expected ones, a
+    CommandError will be raised.
 
     Return the command string, the command recommanded buffer and the command
     recommanded timeout policy.
@@ -143,14 +143,14 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
             proj = project
             break
     if proj is None:
-        raise ARCommandError('Unknown project ' + s_proj)
+        raise CommandError('Unknown project ' + s_proj)
     # Find the class
     for test_class in proj.classes:
         if test_class.name == s_cls:
             cls = test_class
             break
     if cls is None:
-        raise ARCommandError('Unknown class ' + s_cls + ' in project ' + s_proj)
+        raise CommandError('Unknown class ' + s_cls + ' in project ' + s_proj)
     # Find the command
     for i in range(len(cls.cmds)):
         test_cmd = cls.cmds[i]
@@ -159,7 +159,7 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
             cmdid = i
             break
     if cmd is None:
-        raise ARCommandError('Unknown command ' + s_cmd + ' in class ' + s_cls + ' of project ' + s_proj)
+        raise CommandError('Unknown command ' + s_cmd + ' in class ' + s_cls + ' of project ' + s_proj)
 
     ret = struct.pack('<BBH', int(proj.ident), int(cls.ident), cmdid)
     argsfmt, needed = _format_string_for_cmd(cmd)
@@ -167,11 +167,11 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
         try:
             ret += _struct_pack(argsfmt, *args)
         except IndexError:
-            raise ARCommandError('Missing arguments')
+            raise CommandError('Missing arguments')
         except TypeError:
-            raise ARCommandError('Bad type for arguments')
+            raise CommandError('Bad type for arguments')
         except struct.error:
-            raise ARCommandError('Bad type for arguments')
+            raise CommandError('Bad type for arguments')
             
         
     return ret, cmd.buf, cmd.timeout
@@ -198,13 +198,13 @@ def unpack_command(buf):
                this is useful for map commands, as this will be the key.
     }
 
-    An ARCommandError is raised if the command is in a bad format.
+    A CommandError is raised if the command is in a bad format.
     """
     # Read the project/cls/cmd from the buffer
     try:
         (i_proj, i_cls, i_cmd) = struct.unpack('<BBH', buf[:4])
     except struct.error:
-        raise ARCommandError('Bad input buffer (not an ARCommand)')
+        raise CommandError('Bad input buffer (not an ARCommand)')
     proj = None
     cls = None
     cmd = None
@@ -237,7 +237,7 @@ def unpack_command(buf):
         try:
             args = _struct_unpack(argsfmt, buf[4:])
         except struct.error:
-            raise ARCommandError('Bad input buffers (arguments do not match the command)')
+            raise CommandError('Bad input buffers (arguments do not match the command)')
 
     ret = {
         'name'     : '%s.%s.%s' % (proj.name, cls.name, cmd.name),
