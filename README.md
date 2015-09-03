@@ -69,8 +69,8 @@ Where `'project.class.command'` represents the name of the command (i.e. the com
 The `get_value()` function returns either:
 * `None` for never received commands
 * A dictionnary mapping the arguments names to their values for most commands (i.e. for the `BatteryStateChanged`, the dictionnary will have a format like `{u'percent': 75}`)
-* A list of such dictionnaries, for commands declared as `listtype=LIST` in the `libARCommands` xml files
-* A dictionnary of such dicitonnaries for commands declared as `listtype=MAP` in the `libARCommands` xml files. In this case, the first argument value will be used as a key to the top-level dictionnary.
+* A list of such dictionnaries, for commands declared as `listtype=LIST` in the `libARCommands` xml files. (e.g. the `'ARDrone3.NetworkState.WifiAuthChannelListChanged'` command)
+* A dictionnary of such dicitonnaries for commands declared as `listtype=MAP` in the `libARCommands` xml files. In this case, the first argument value will be used as a key to the top-level dictionnary. (e.g. the `'common.CommonState.SensorStatesListChanged'` command)
 
 Some predefined getters might also be defined:
 
