@@ -207,7 +207,7 @@ class Device(object):
     initialization. It should not be used directly.
     """
 
-    def __init__(self, ip, c2d_port, d2c_port, ackBuffer=-1, nackBuffer=-1, urgBuffer=-1, cmdBuffers=[], skipCommonInit=False):
+    def __init__(self, ip, c2d_port, d2c_port, ackBuffer=-1, nackBuffer=-1, urgBuffer=-1, cmdBuffers=[], skipCommonInit=False, verbose=False):
         """
         Create and start a new Device.
 
@@ -222,7 +222,9 @@ class Device(object):
         - urgBuffer : The buffer for high priority data (-1 means no buffer)
         - cmdBuffers : The buffers from the device which contains ARCommands
         - skipCommonInit : Skip the common init phase (only for SkyController)
+        - verbose : Set verbose mode (prints sent/received commands)
         """
+        self._verbose = verbose
         inb = [i for i in (ackBuffer, nackBuffer, urgBuffer) if i > 0]
         outb = cmdBuffers
         self._network = Network(ip, c2d_port, d2c_port, inb, outb, self)
@@ -256,7 +258,8 @@ class Device(object):
                 args = {}
                 key = 'no_arg'
 
-#            print 'Received command : ' + str(dico)
+            if self._verbose:
+                print 'Received command : ' + str(dico)
 
             type = dico['listtype']
             if type == ARCommandListType.NONE:
@@ -343,8 +346,8 @@ class Device(object):
 
         status = self._network.send_data(bufno, cmd, datatype, timeout=timeout, tries=retries+1)
 
-#        if status == 0:
-#            print 'Sent command %s.%s.%s' % (pr, cl, cm)
+        if status == 0 and self._verbose:
+            print 'Sent command %s.%s.%s with args %s' % (pr, cl, cm, str(*args))
 
         return status
 
@@ -386,6 +389,9 @@ class Device(object):
 
     def stop(self):
         self._network.stop()
+
+    def set_verbose(self, verbose):
+        self._verbose = verbose
 
 
 class BebopDrone(Device):
