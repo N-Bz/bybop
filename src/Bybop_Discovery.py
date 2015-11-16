@@ -7,6 +7,7 @@ import threading
 class DeviceID(object):
     BEBOP_DRONE = '0901'
     JUMPING_SUMO = '0902'
+    SKYCONTROLLER = '0903'
 
 class Discovery(object):
     """

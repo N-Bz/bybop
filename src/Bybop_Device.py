@@ -207,7 +207,7 @@ class Device(object):
     initialization. It should not be used directly.
     """
 
-    def __init__(self, ip, c2d_port, d2c_port, ackBuffer=-1, nackBuffer=-1, urgBuffer=-1, cmdBuffers=[]):
+    def __init__(self, ip, c2d_port, d2c_port, ackBuffer=-1, nackBuffer=-1, urgBuffer=-1, cmdBuffers=[], skipCommonInit=False):
         """
         Create and start a new Device.
 
@@ -221,6 +221,7 @@ class Device(object):
         - nackBuffer : The buffer for non acknowledged data (-1 means no buffer)
         - urgBuffer : The buffer for high priority data (-1 means no buffer)
         - cmdBuffers : The buffers from the device which contains ARCommands
+        - skipCommonInit : Skip the common init phase (only for SkyController)
         """
         inb = [i for i in (ackBuffer, nackBuffer, urgBuffer) if i > 0]
         outb = cmdBuffers
@@ -230,7 +231,8 @@ class Device(object):
         self._urgBuffer = urgBuffer
         self._cmdBuffers = cmdBuffers
         self._state = State()
-        self._common_init_product()
+        if not skipCommonInit:
+            self._common_init_product()
         self._init_product()
 
     def data_received(self, buf, data):
@@ -253,6 +255,8 @@ class Device(object):
             except:
                 args = {}
                 key = 'no_arg'
+
+#            print 'Received command : ' + str(dico)
 
             type = dico['listtype']
             if type == ARCommandListType.NONE:
@@ -339,6 +343,9 @@ class Device(object):
 
         status = self._network.send_data(bufno, cmd, datatype, timeout=timeout, tries=retries+1)
 
+#        if status == 0:
+#            print 'Sent command %s.%s.%s' % (pr, cl, cm)
+
         return status
 
     def wait_answer(self, name, timeout=5.0):
@@ -363,15 +370,15 @@ class Device(object):
         raise NotImplementedError('Do not use Device directly !')
 
     def _common_init_product(self):
-        self.send_data('common', 'Settings', 'AllSettings', toto=42)
-        self.wait_answer('common.SettingsState.AllSettingsChanged')
-        self.send_data('common', 'Common', 'AllStates')
-        self.wait_answer('common.CommonState.AllStatesChanged')
         now = time.gmtime()
         dateStr = time.strftime('%Y-%m-%d', now)
         timeStr = time.strftime('T%H%M%S+0000', now)
         self.send_data('common', 'Common', 'CurrentDate', dateStr)
         self.send_data('common', 'Common', 'CurrentTime', timeStr)
+        self.send_data('common', 'Settings', 'AllSettings')
+        self.wait_answer('common.SettingsState.AllSettingsChanged')
+        self.send_data('common', 'Common', 'AllStates')
+        self.wait_answer('common.CommonState.AllStatesChanged')
 
     def dump_state(self):
         print 'Internal state :'
@@ -474,13 +481,35 @@ class JumpingSumo(Device):
         - 1 : high
         """
         return self.send_data('JumpingSumo', 'Animations', 'Jump', jump_type)
+
+
+
+class SkyController(Device):
+    def __init__(self, ip, c2d_port, d2c_port):
+        """
+        Create and start a new SkyController device.
+
+        The connection must have been started beforehand by Connection.connect().
+
+        Arguments:
+        - ip : The product ip address
+        - c2d_port : The remote port (on which we will send data)
+        - d2c_port : The local port (on which we will read data)
+        """
+        super(SkyController, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, urgBuffer=12, cmdBuffers=[127, 126], skipCommonInit=True)
+
+    def _init_product(self):
+        self.send_data('SkyController', 'Settings', 'AllSettings')
+        self.wait_answer('SkyController.SettingsState.AllSettingsChanged')
+        self.send_data('SkyController', 'Common', 'AllStates')
+        self.wait_answer('SkyController.CommonState.AllStatesChanged')
         
 
 def create_and_connect(device, d2c_port, controller_type, controller_name):
     device_id = get_device_id(device)
     ip = get_ip(device)
     port = get_port(device)
-    if device_id not in (DeviceID.BEBOP_DRONE, DeviceID.JUMPING_SUMO):
+    if device_id not in (DeviceID.BEBOP_DRONE, DeviceID.JUMPING_SUMO, DeviceID.SKYCONTROLLER):
         print 'Unknown product ' + device_id
         return None
 
@@ -499,4 +528,6 @@ def create_and_connect(device, d2c_port, controller_type, controller_name):
         return BebopDrone(ip, c2d_port, d2c_port)
     elif device_id == DeviceID.JUMPING_SUMO:
         return JumpingSumo(ip, c2d_port, d2c_port)
+    elif device_id == DeviceID.SKYCONTROLLER:
+        return SkyController(ip, c2d_port, d2c_port)
     return None
