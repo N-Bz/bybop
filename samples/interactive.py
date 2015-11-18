@@ -14,7 +14,7 @@ import Bybop_Device
 
 print 'Searching for devices'
 
-discovery = Discovery([DeviceID.BEBOP_DRONE, DeviceID.JUMPING_SUMO, DeviceID.SKYCONTROLLER])
+discovery = Discovery(DeviceID.ALL)
 
 discovery.wait_for_change()
 

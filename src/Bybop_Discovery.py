@@ -8,6 +8,15 @@ class DeviceID(object):
     BEBOP_DRONE = '0901'
     JUMPING_SUMO = '0902'
     SKYCONTROLLER = '0903'
+    JUMPING_NIGHT = '0905'
+    JUMPING_RACE = '0906'
+
+    ALL = [ BEBOP_DRONE,
+            JUMPING_SUMO,
+            JUMPING_RACE,
+            JUMPING_NIGHT
+            SKYCONTROLLER,
+        ]
 
 class Discovery(object):
     """
@@ -16,7 +25,6 @@ class Discovery(object):
     The protocol here is not covered by the ARSDK but this implementation is here to provide a fully working
     sample code.
     """
-
     def __init__(self, deviceId):
         """
         Create and start a researcher for devices on network.

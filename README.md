@@ -16,7 +16,6 @@ This project is a work in progress, and thus is not stable, in every possible wa
  * Current API (Bybop_Device) is non-final and will probably change in the future
  * Video streaming is not supported
  * BLE products are not supported
- * New Jumping Sumo models are not supported
 
 ## Getting started
 
@@ -29,7 +28,9 @@ Where `ARSDK_PATH` is the path to the folder containing the `ARSDKBuildUtils` an
 To seach drones on the network, use the `Bybop_Discovery` module:
 
     from Bybop_Discovery import Discovery, DeviceID
-    discovery = Discovery([DeviceID.BEBOP_DRONE, DeviceID.JUMPING_SUMO])
+    discovery = Discovery(DeviceID.ALL)
+
+You can specify a sublist of devices to search by providing a list of devices (e.g. `[DeviceID.JUMPING_SUMO, DeviceID.JUMPING_NIGHT, DeviceID.JUMPING_RACE]`) instead of `DeviceID.ALL`.
 
 The discovery module will start searching for devices on the network. You can then retrieve a dictionnary of visible devices (indexed by their name) with:
 
@@ -45,7 +46,7 @@ A convenience function is given in the `Bybop_Device` module:
     controller_name = 'Application Name'
     drone = create_and_connect(some_device, d2c_port, controller_type, controller_name)
 
-This function will return either `None` (error during connection), or a `BebopDrone` or `JumpingSumo` instance.
+This function will return either `None` (error during connection), or a `BebopDrone`, `JumpingSumo`, or `SkyController` instance.
 
 ### Disconnecting
 
