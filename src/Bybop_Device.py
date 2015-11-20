@@ -515,7 +515,7 @@ def create_and_connect(device, d2c_port, controller_type, controller_name):
     device_id = get_device_id(device)
     ip = get_ip(device)
     port = get_port(device)
-    if device_id not in DeviceID.ALL
+    if device_id not in DeviceID.ALL:
         print 'Unknown product ' + device_id
         return None
 
@@ -530,7 +530,7 @@ def create_and_connect(device, d2c_port, controller_type, controller_name):
 
     c2d_port = answer['c2d_port']
 
-    if device_id == DeviceID.BEBOP_DRONE:
+    if device_id == DeviceID.BEBOP_DRONE or device_id == DeviceID.BEBOP_2:
         return BebopDrone(ip, c2d_port, d2c_port)
     elif device_id == DeviceID.JUMPING_SUMO or device_id == DeviceID.JUMPING_NIGHT or device_id == DeviceID.JUMPING_RACE:
         return JumpingSumo(ip, c2d_port, d2c_port)

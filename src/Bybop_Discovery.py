@@ -10,11 +10,13 @@ class DeviceID(object):
     SKYCONTROLLER = '0903'
     JUMPING_NIGHT = '0905'
     JUMPING_RACE = '0906'
+    BEBOP_2 = '090c'
 
     ALL = [ BEBOP_DRONE,
+            BEBOP_2,
             JUMPING_SUMO,
             JUMPING_RACE,
-            JUMPING_NIGHT
+            JUMPING_NIGHT,
             SKYCONTROLLER,
         ]
 
