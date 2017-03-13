@@ -8,6 +8,7 @@ class DeviceID(object):
     BEBOP_DRONE = '0901'
     JUMPING_SUMO = '0902'
     SKYCONTROLLER = '0903'
+    SKYCONTROLLER_2 = '090f'
     JUMPING_NIGHT = '0905'
     JUMPING_RACE = '0906'
     BEBOP_2 = '090c'
@@ -18,6 +19,7 @@ class DeviceID(object):
             JUMPING_RACE,
             JUMPING_NIGHT,
             SKYCONTROLLER,
+            SKYCONTROLLER_2,
         ]
 
 class Discovery(object):

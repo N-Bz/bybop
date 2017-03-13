@@ -1,0 +1,3 @@
+[submodule "arsdk-xml"]
+	path = arsdk-xml
+	url = https://github.com/Parrot-Developers/arsdk-xml

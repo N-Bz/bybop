@@ -7,21 +7,22 @@ This implementation of the SDK is designed to be an example implementation for p
 Prerequisites:
 
 * python 2.7, with threading support
-* The [ARSDKBuildUtils](https://github.com/Parrot-Developers/ARSDKBuildUtils) and the [libARCommands](https://github.com/Parrot-Developers/libARCommands) repositories must be cloned somewhere in your system. Hopefully this limitation will be lifted at some point.
 
 ## Status
 
 This project is a work in progress, and thus is not stable, in every possible way:
  * Current error handling is almost non-existant (so most error will lead to a crash)
  * Current API (Bybop_Device) is non-final and will probably change in the future
- * Video streaming is not supported
- * BLE products are not supported
+ 
+## Installation
+
+This project uses git submodule to include the official Parrot `arsdk-xml` repo. After cloning this repo, you must initialize & update the submodules:
+`git submodule init; git submodule update`
 
 ## Getting started
 
 This project contains a sample code (samples/interactive.py), which uses `bybop` to find a drone, and to connect to it, then pops an interactive python shell in which you can play with the drone object. You can run this sample with the following command (run inside the samples directory):
-`ARSDK_PATH=/path/to/the/ARSDK ./interactive.py`
-Where `ARSDK_PATH` is the path to the folder containing the `ARSDKBuildUtils` and the `libARCommands` repo (see Prerequisites).
+`./interactive.py`
 
 ### Searching drones on the network
 
@@ -60,6 +61,8 @@ The device will automatically disconnect 5 seconds after receiving the last data
 
 The `Bybop_Device` module provides the main interface with the device. The `Device` class is device-agnostic and can be used to send/receive generic data. The `BebopDrone` and `JumpingSumo` classes inherit from the `Device` class and add some helpers.
 
+Note: In all further references, commands are spelled in `'project.class.command'` format. For newer commands in features (e.g. the `drone_manager` feature of the SkyController 2) instead of projects, the class argument should be empty (i.e. `'feature..command'` for single args, or `fn(feature, '', command)` for multiple args).
+
 ### Reading the state of the device
 
 Every command received is put in a three-level state dictionnary within the `Device` object. To read a specific received command, you can use the following function:
@@ -92,8 +95,8 @@ To send a command to the drone, you can either use predefined helpers from the `
 
 Or directly send a command by name:
 
-    drone.send_data('ARDrone3', 'Piloting', 'TakeOff') # Same as drone.take_off()
-    drone.send_data('JumpingSumo', 'Animations', 'Jump', 0) # Same as drone.jump(0)
+    drone.send_data('ardrone3', 'Piloting', 'TakeOff') # Same as drone.take_off()
+    drone.send_data('jpsumo', 'Animations', 'Jump', 0) # Same as drone.jump(0)
 
 These function will return a `NetworkStatus`, indicating whether the command was properly sent or not.
 
@@ -103,25 +106,20 @@ To do a simple 'take off and wait for the drone to be in hovering mode', you can
 
     drone.take_off()
     try:
-        flying_state = drone.get_state(copy=False).get_value('ARDrone3.PilotingState.FlyingStateChanged')['state']
+        flying_state = drone.get_state(copy=False).get_value('ardrone3.PilotingState.FlyingStateChanged')['state']
     except:
         flying_state = None
     while flying_state != 2: # 2 is hovering
-        drone.wait_for('ARDrone3.PilotingState.FlyingStateChanged')
+        drone.wait_for('ardrone3.PilotingState.FlyingStateChanged')
         try:
-            flying_state = drone.get_state(copy=False).get_value('ARDrone3.PilotingState.FlyingStateChanged')['state']
+            flying_state = drone.get_state(copy=False).get_value('ardrone3.PilotingState.FlyingStateChanged')['state']
         except:
             flying_state = None
 
 ## TODO List
 
 No precise order:
- * Remove the need for `ARSDKBuildUtils` and `libARCommands`
  * Include a proper `Ctrl-C` handling during the Discovery and Connection phases
- * Add BLE support
- * Add video streaming support
- * Add support for Jumping Night / Jumping Race products
- * Fix bugs !
- * Add more helper functions in `Bybop_Device`
+ * Add video streaming support (maybe ... in form of a forked VLC on bebops). Won't come on JumpingSumos !
  * Change the API so that all function takes command in `'project.class.command'` format instead of the three argument format used in some functions.
 

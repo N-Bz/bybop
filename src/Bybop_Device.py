@@ -10,7 +10,7 @@ from Bybop_Network import *
 from Bybop_Commands import *
 from Bybop_Discovery import *
 from Bybop_Connection import *
-import ARCommandsParser
+import arsdkparser
 
 class State(object):
     """
@@ -261,12 +261,12 @@ class Device(object):
             if self._verbose:
                 print 'Received command : ' + str(dico)
 
-            type = dico['listtype']
-            if type == ARCommandListType.NONE:
+            type_ = dico['listtype']
+            if type_ == arsdkparser.ArCmdListType.NONE:
                 self._state.put(pr, cl, cmd, args)
-            elif type == ARCommandListType.LIST:
+            elif type_ == arsdkparser.ArCmdListType.LIST:
                 self._state.put_list(pr, cl, cmd, args)
-            elif type == ARCommandListType.MAP:
+            elif type_ == arsdkparser.ArCmdListType.MAP:
                 self._state.put_map(pr, cl, cmd, args, key)
 
     def did_disconnect(self):
@@ -323,17 +323,17 @@ class Device(object):
         """
         try:
             cmd, buf, to = pack_command(pr, cl, cm, *args)
-        except CommandError:
-            print 'Bad command !'
+        except CommandError as e:
+            print 'Bad command !' + str(e)
             return NetworkStatus.ERROR
         bufno=-1
-        if buf == ARCommandBuffer.NON_ACK:
+        if buf == arsdkparser.ArCmdBufferType.NON_ACK:
             bufno = self._nackBuffer
             datatype = Bybop_NetworkAL.DataType.DATA
-        elif buf == ARCommandBuffer.ACK:
+        elif buf == arsdkparser.ArCmdBufferType.ACK:
             bufno = self._ackBuffer
             datatype = Bybop_NetworkAL.DataType.DATA_WITH_ACK
-        elif buf == ARCommandBuffer.HIGH_PRIO:
+        elif buf == arsdkparser.ArCmdBufferType.HIGH_PRIO:
             bufno = self._urgBuffer
             datatype = Bybop_NetworkAL.DataType.DATA_LOW_LATENCY
 
@@ -410,19 +410,19 @@ class BebopDrone(Device):
 
     def _init_product(self):
         # Deactivate video streaming
-        self.send_data('ARDrone3', 'MediaStreaming', 'VideoEnable', 0)
+        self.send_data('ardrone3', 'MediaStreaming', 'VideoEnable', 0)
 
     def take_off(self):
         """
         Send a take off request to the Bebop Drone.
         """
-        self.send_data('ARDrone3', 'Piloting', 'TakeOff')
+        self.send_data('ardrone3', 'Piloting', 'TakeOff')
 
     def land(self):
         """
         Send a landing request to the Bebop Drone.
         """
-        self.send_data('ARDrone3', 'Piloting', 'Landing')
+        self.send_data('ardrone3', 'Piloting', 'Landing')
 
     def emergency(self):
         """
@@ -430,7 +430,7 @@ class BebopDrone(Device):
 
         An emergency request shuts down the motors.
         """
-        self.send_data('ARDrone3', 'Piloting', 'Emergency')
+        self.send_data('ardrone3', 'Piloting', 'Emergency')
 
 class JumpingSumo(Device):
     def __init__(self, ip, c2d_port, d2c_port):
@@ -448,7 +448,7 @@ class JumpingSumo(Device):
 
     def _init_product(self):
         # Deactivate video streaming
-        self.send_data('JumpingSumo', 'MediaStreaming', 'VideoEnable', 0)
+        self.send_data('jpsumo', 'MediaStreaming', 'VideoEnable', 0)
 
     def change_posture(self, posture):
         """
@@ -463,7 +463,7 @@ class JumpingSumo(Device):
         - 1 : jumper
         - 2 : kicker
         """
-        return self.send_data('JumpingSumo', 'Piloting', 'Posture', posture)
+        return self.send_data('jpsumo', 'Piloting', 'Posture', posture)
 
     def change_volume(self, volume):
         """
@@ -472,7 +472,7 @@ class JumpingSumo(Device):
         Arguments:
         - volume : integer value [0; 100] : percentage of maximum volume.
         """
-        return self.send_data('JumpingSumo', 'AudioSettings', 'MasterVolume', volume)
+        return self.send_data('jpsumo', 'AudioSettings', 'MasterVolume', volume)
 
     def jump(self, jump_type):
         """
@@ -486,7 +486,7 @@ class JumpingSumo(Device):
         - 0 : long
         - 1 : high
         """
-        return self.send_data('JumpingSumo', 'Animations', 'Jump', jump_type)
+        return self.send_data('jpsumo', 'Animations', 'Jump', jump_type)
 
 
 
@@ -505,11 +505,11 @@ class SkyController(Device):
         super(SkyController, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, urgBuffer=12, cmdBuffers=[127, 126], skipCommonInit=True)
 
     def _init_product(self):
-        self.send_data('SkyController', 'Settings', 'AllSettings')
-        self.wait_answer('SkyController.SettingsState.AllSettingsChanged')
-        self.send_data('SkyController', 'Common', 'AllStates')
-        self.wait_answer('SkyController.CommonState.AllStatesChanged')
-        
+        self.send_data('skyctrl', 'Settings', 'AllSettings')
+        self.wait_answer('skyctrl.SettingsState.AllSettingsChanged')
+        self.send_data('skyctrl', 'Common', 'AllStates')
+        self.wait_answer('skyctrl.CommonState.AllStatesChanged')
+
 
 def create_and_connect(device, d2c_port, controller_type, controller_name):
     device_id = get_device_id(device)
@@ -534,6 +534,6 @@ def create_and_connect(device, d2c_port, controller_type, controller_name):
         return BebopDrone(ip, c2d_port, d2c_port)
     elif device_id == DeviceID.JUMPING_SUMO or device_id == DeviceID.JUMPING_NIGHT or device_id == DeviceID.JUMPING_RACE:
         return JumpingSumo(ip, c2d_port, d2c_port)
-    elif device_id == DeviceID.SKYCONTROLLER:
+    elif device_id == DeviceID.SKYCONTROLLER or device_id == DeviceID.SKYCONTROLLER_2:
         return SkyController(ip, c2d_port, d2c_port)
     return None

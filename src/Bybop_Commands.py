@@ -2,42 +2,21 @@ import os
 import sys
 import struct
 
-# Find the path of the ARSDK
-# We need this to get the ARCommandsParser module, which is located
-# in the ARSDKBuildUtils repo, and the ARCommands XML files.
+MY_PATH, _ = os.path.split(os.path.realpath(__file__))
+ARSDK_PATH=os.path.join(MY_PATH,'..', 'arsdk-xml')
+ARCOMMANDS_PATH=os.path.join(ARSDK_PATH, 'xml')
 
-# User code can export the name before importing this module:
-#   import os
-#   os.environ['ARSDK_PATH'] = '/path/to/the/SDK'
-#   import ARSDK_Commands
+sys.path.append(ARSDK_PATH)
 
-# This restriction might be lifted in further versions, by generating the command hierarchy
-# beforehand, and importing this hierarchy in this module instead of reading the xml files each time.
-# pickling the _projects variable is not a good way to do this, as we would still need the class
-# descriptions found in the ARCommandsParser module, we will have to define our own!
+import arsdkparser
 
-try:
-    ARSDK_PATH=os.environ['ARSDK_PATH']
-except:
-    print 'You need to export the path to the ARSDK3 in the ARSDK_PATH environment variable'
-    sys.exit(1) # Ugly, but works
-ARCOMMANDS_PATH=os.path.join(ARSDK_PATH, 'libARCommands')
-PY_MODULES_PATH=os.path.join(ARSDK_PATH, 'ARSDKBuildUtils', 'Utils', 'Python')
-
-sys.path.append(PY_MODULES_PATH)
-
-from ARCommandsParser import *
-
-_projects = parseAllProjects(['all'], ARCOMMANDS_PATH, False)
-
-# Check all
-_err = ''
-for proj in _projects:
-    _err = _err + proj.check()
-if len (_err) > 0:
-    print 'Your XML Files contain errors:',
-    print _err
-    sys.exit(1)
+_ctx = arsdkparser.ArParserCtx()
+arsdkparser.parse_xml(_ctx, os.path.join(ARCOMMANDS_PATH, 'generic.xml'))
+for f in sorted(os.listdir(ARCOMMANDS_PATH)):
+    if not f.endswith('.xml') or f == 'generic.xml':
+        continue
+    arsdkparser.parse_xml(_ctx, os.path.join(ARCOMMANDS_PATH, f))
+arsdkparser.finalize_ftrs(_ctx)
 
 
 class CommandError(Exception):
@@ -64,7 +43,15 @@ _struct_fmt_for_type = {
 def _format_string_for_cmd(cmd):
     ret = '<'
     for arg in cmd.args:
-        ret += _struct_fmt_for_type[arg.type]
+        if isinstance(arg.argType, arsdkparser.ArMultiSetting):
+            raise Exception('Multisettings not supported !')
+        elif isinstance(arg.argType, arsdkparser.ArBitfield):
+            arg_str_type = arsdkparser.ArArgType.TO_STRING[arg.argType.btfType]
+        elif isinstance(arg.argType, arsdkparser.ArEnum):
+            arg_str_type = 'i32'
+        else:
+            arg_str_type = arsdkparser.ArArgType.TO_STRING[arg.argType]
+        ret += _struct_fmt_for_type[arg_str_type]
     return ret, bool(cmd.args)
 
 def _struct_pack(fmt, *args):
@@ -119,7 +106,7 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
 
     Arguments:
     - s_proj : Name of the project
-    - s_cls  : Name of the class within the project
+    - s_cls  : Name of the class within the project (ignored for features)
     - s_cmd  : Name of the command within the class
     - *args  : Arguments of the command.
 
@@ -133,35 +120,43 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
     recommanded timeout policy.
     """
     proj = None
+    feat = None
+    projid = 0
     cls = None
+    clsid = 0
     cmd = None
-    cmdid = 0
     # Let an exception be raised if we do not know the command or if the format is bad
     # Find the project
-    for project in _projects:
-        if project.name == s_proj:
-            proj = project
-            break
-    if proj is None:
+    if s_proj in _ctx.projectsByName:
+        proj = _ctx.projectsByName[s_proj]
+    elif s_proj in _ctx.featuresByName:
+        feat = _ctx.featuresByName[s_proj]
+    if proj is None and feat is None:
         raise CommandError('Unknown project ' + s_proj)
-    # Find the class
-    for test_class in proj.classes:
-        if test_class.name == s_cls:
-            cls = test_class
-            break
-    if cls is None:
-        raise CommandError('Unknown class ' + s_cls + ' in project ' + s_proj)
-    # Find the command
-    for i in range(len(cls.cmds)):
-        test_cmd = cls.cmds[i]
-        if test_cmd.name == s_cmd:
-            cmd = test_cmd
-            cmdid = i
-            break
-    if cmd is None:
-        raise CommandError('Unknown command ' + s_cmd + ' in class ' + s_cls + ' of project ' + s_proj)
 
-    ret = struct.pack('<BBH', int(proj.ident), int(cls.ident), cmdid)
+    if proj: # Project
+        projid = proj.projectId
+        # Find the class
+        if s_cls in proj.classesByName:
+            cls = proj.classesByName[s_cls]
+        if cls is None:
+            raise CommandError('Unknown class ' + s_cls + ' in project ' + s_proj)
+        clsid = cls.classId
+
+        # Find the command
+        if s_cmd in cls.cmdsByName:
+            cmd = cls.cmdsByName[s_cmd]
+        if cmd is None:
+            raise CommandError('Unknown command ' + s_cmd + ' in class ' + s_cls + ' of project ' + s_proj)
+    elif feat: # Feature
+        projid = feat.featureId
+        # Find the command
+        if s_cmd in feat.cmdsByName:
+            cmd = feat.cmdsByName[s_cmd]
+        if cmd is None:
+            raise CommandError('Unknown command ' + s_cmd + ' in feature ' + s_proj)
+
+    ret = struct.pack('<BBH', projid, clsid, cmd.cmdId)
     argsfmt, needed = _format_string_for_cmd(cmd)
     if needed:
         try:
@@ -172,9 +167,9 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
             raise CommandError('Bad type for arguments')
         except struct.error:
             raise CommandError('Bad type for arguments')
-            
-        
-    return ret, cmd.buf, cmd.timeout
+
+
+    return ret, cmd.bufferType, cmd.timeoutPolicy
 
 def unpack_command(buf):
     """
@@ -206,30 +201,39 @@ def unpack_command(buf):
     except struct.error:
         raise CommandError('Bad input buffer (not an ARCommand)')
     proj = None
+    feat = None
     cls = None
     cmd = None
     # Let an exception be raised if we do not know the command or if the format is bad
 
     # Find the project
-    for project in _projects:
-        if int(project.ident) == i_proj:
-            proj = project
-            break
-    if proj is None:
-        return {}, False
-    # Find the class
-    for test_class in proj.classes:
-        if int(test_class.ident) == i_cls:
-            cls = test_class
-            break
-    if cls is None:
-        return {}, False
-    # Commands are in order in their classes
-    try:
-        cmd = cls.cmds[i_cmd]
-    except IndexError:
-        return {}, False
+    if i_proj in _ctx.projectsById:
+        proj = _ctx.projectsById[i_proj]
+    # Or the feature
+    if i_proj in _ctx.featuresById:
+        feat = _ctx.featuresById[i_proj]
 
+    # If project, Find the class
+    if proj:
+        if i_cls in proj.classesById:
+            cls = proj.classesById[i_cls]
+        else:
+            return {}, False
+
+        if i_cmd in cls.cmdsById:
+            cmd = cls.cmdsById[i_cmd]
+        else:
+            return {}, False
+    # If feature, find directly the command
+    elif feat:
+        if i_cmd in feat.cmdsById:
+            cmd = feat.cmdsById[i_cmd]
+        elif i_cmd in feat.evtsById:
+            cmd = feat.evtsById[i_cmd]
+        else:
+            return {}, False
+    else:
+        return {}, False
 
     args = ()
     argsfmt, needed = _format_string_for_cmd(cmd)
@@ -240,11 +244,12 @@ def unpack_command(buf):
             raise CommandError('Bad input buffers (arguments do not match the command)')
 
     ret = {
-        'name'     : '%s.%s.%s' % (proj.name, cls.name, cmd.name),
-        'proj'     : proj.name,
-        'class'    : cls.name,
+        'name'     : '%s.%s.%s' % (proj.name if proj else feat.name, cls.name if cls else '', cmd.name),
+        'proj'     : proj.name if proj else feat.name,
+        'class'    : cls.name if cls else '',
         'cmd'      : cmd.name,
-        'listtype' : cmd.listtype,
+        'listtype' : cmd.listType,
+        'listtype_str' : arsdkparser.ArCmdListType.TO_STRING[cmd.listType],
         'args'     : {},
         'arg0'     : '',
     }
