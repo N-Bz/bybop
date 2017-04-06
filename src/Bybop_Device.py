@@ -347,7 +347,7 @@ class Device(object):
         status = self._network.send_data(bufno, cmd, datatype, timeout=timeout, tries=retries+1)
 
         if status == 0 and self._verbose:
-            print 'Sent command %s.%s.%s with args %s' % (pr, cl, cm, str(*args))
+            print 'Sent command %s.%s.%s with args %s' % (pr, cl, cm, str(args))
 
         return status
 
