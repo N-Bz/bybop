@@ -168,7 +168,7 @@ class State(object):
         - name : The command to get, in 'project.class.command' notation
         """
         try:
-            [pr, cl, cmd] = name.split('.')
+            pr, cl, cmd = name.split('.')
         except ValueError:
             return None
         with self._lock:
@@ -305,16 +305,14 @@ class Device(object):
         except:
             return 0
 
-    def send_data(self, pr, cl, cm, *args, **kwargs):
+    def send_data(self, name, *args, **kwargs):
         """
         Send some command to the product.
 
         Return a NetworkStatus value.
 
         Arguments:
-        - pr : Project name of the command
-        - cl : Class name of the command
-        - cm : Command name
+        - name : The command to send, in 'project.class.command' notation
         - *args : arguments to the command
 
         Keyword arguments:
@@ -322,6 +320,7 @@ class Device(object):
         - timeout : timeout (seconds) per try for acknowledgment (default 0.15)
         """
         try:
+            pr, cl, cm = name.split('.')
             cmd, buf, to = pack_command(pr, cl, cm, *args)
         except CommandError as e:
             print 'Bad command !' + str(e)
@@ -376,11 +375,11 @@ class Device(object):
         now = time.gmtime()
         dateStr = time.strftime('%Y-%m-%d', now)
         timeStr = time.strftime('T%H%M%S+0000', now)
-        self.send_data('common', 'Common', 'CurrentDate', dateStr)
-        self.send_data('common', 'Common', 'CurrentTime', timeStr)
-        self.send_data('common', 'Settings', 'AllSettings')
+        self.send_data('common.Common.CurrentDate', dateStr)
+        self.send_data('common.Common.CurrentTime', timeStr)
+        self.send_data('common.Settings.AllSettings')
         self.wait_answer('common.SettingsState.AllSettingsChanged')
-        self.send_data('common', 'Common', 'AllStates')
+        self.send_data('common.Common.AllStates')
         self.wait_answer('common.CommonState.AllStatesChanged')
 
     def dump_state(self):
@@ -410,19 +409,19 @@ class BebopDrone(Device):
 
     def _init_product(self):
         # Deactivate video streaming
-        self.send_data('ardrone3', 'MediaStreaming', 'VideoEnable', 0)
+        self.send_data('ardrone3.MediaStreaming.VideoEnable', 0)
 
     def take_off(self):
         """
         Send a take off request to the Bebop Drone.
         """
-        self.send_data('ardrone3', 'Piloting', 'TakeOff')
+        self.send_data('ardrone3.Piloting.TakeOff')
 
     def land(self):
         """
         Send a landing request to the Bebop Drone.
         """
-        self.send_data('ardrone3', 'Piloting', 'Landing')
+        self.send_data('ardrone3.Piloting.Landing')
 
     def emergency(self):
         """
@@ -430,7 +429,7 @@ class BebopDrone(Device):
 
         An emergency request shuts down the motors.
         """
-        self.send_data('ardrone3', 'Piloting', 'Emergency')
+        self.send_data('ardrone3.Piloting.Emergency')
 
 class JumpingSumo(Device):
     def __init__(self, ip, c2d_port, d2c_port):
@@ -448,7 +447,7 @@ class JumpingSumo(Device):
 
     def _init_product(self):
         # Deactivate video streaming
-        self.send_data('jpsumo', 'MediaStreaming', 'VideoEnable', 0)
+        self.send_data('jpsumo.MediaStreaming.VideoEnable', 0)
 
     def change_posture(self, posture):
         """
@@ -463,7 +462,7 @@ class JumpingSumo(Device):
         - 1 : jumper
         - 2 : kicker
         """
-        return self.send_data('jpsumo', 'Piloting', 'Posture', posture)
+        return self.send_data('jpsumo.Piloting.Posture', posture)
 
     def change_volume(self, volume):
         """
@@ -472,7 +471,7 @@ class JumpingSumo(Device):
         Arguments:
         - volume : integer value [0; 100] : percentage of maximum volume.
         """
-        return self.send_data('jpsumo', 'AudioSettings', 'MasterVolume', volume)
+        return self.send_data('jpsumo.AudioSettings.MasterVolume', volume)
 
     def jump(self, jump_type):
         """
@@ -486,7 +485,7 @@ class JumpingSumo(Device):
         - 0 : long
         - 1 : high
         """
-        return self.send_data('jpsumo', 'Animations', 'Jump', jump_type)
+        return self.send_data('jpsumo.Animations.Jump', jump_type)
 
 
 
@@ -505,9 +504,9 @@ class SkyController(Device):
         super(SkyController, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, urgBuffer=12, cmdBuffers=[127, 126], skipCommonInit=True)
 
     def _init_product(self):
-        self.send_data('skyctrl', 'Settings', 'AllSettings')
+        self.send_data('skyctrl.Settings.AllSettings')
         self.wait_answer('skyctrl.SettingsState.AllSettingsChanged')
-        self.send_data('skyctrl', 'Common', 'AllStates')
+        self.send_data('skyctrl.Common.AllStates')
         self.wait_answer('skyctrl.CommonState.AllStatesChanged')
 
 

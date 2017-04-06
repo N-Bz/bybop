@@ -95,8 +95,8 @@ To send a command to the drone, you can either use predefined helpers from the `
 
 Or directly send a command by name:
 
-    drone.send_data('ardrone3', 'Piloting', 'TakeOff') # Same as drone.take_off()
-    drone.send_data('jpsumo', 'Animations', 'Jump', 0) # Same as drone.jump(0)
+    drone.send_data('ardrone3.Piloting.TakeOff') # Same as drone.take_off()
+    drone.send_data('jpsumo.Animations.Jump', 0) # Same as drone.jump(0)
 
 These function will return a `NetworkStatus`, indicating whether the command was properly sent or not.
 
@@ -121,5 +121,4 @@ To do a simple 'take off and wait for the drone to be in hovering mode', you can
 No precise order:
  * Include a proper `Ctrl-C` handling during the Discovery and Connection phases
  * Add video streaming support (maybe ... in form of a forked VLC on bebops). Won't come on JumpingSumos !
- * Change the API so that all function takes command in `'project.class.command'` format instead of the three argument format used in some functions.
 
