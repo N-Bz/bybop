@@ -64,11 +64,11 @@ class Connection(object):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((self._ip, self._port))
-            sock.send(jsonReq)
-            jsonRet = sock.recv(4096)
+            sock.send(bytes(jsonReq, 'utf-8'))
+            jsonRet = sock.recv(4096)[:-1].decode('utf-8')
             sock.close()
         except socket.error:
             return None
 
-        retDic, _ = json.JSONDecoder().raw_decode(jsonRet)
+        retDic = json.loads(jsonRet)
         return retDic

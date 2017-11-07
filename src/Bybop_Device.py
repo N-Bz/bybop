@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import time
 import threading
@@ -90,7 +90,7 @@ class State(object):
     def _signal_waiting(self, pr, cl, cmd):
         waitname = '%s.%s.%s' % (pr, cl, cmd)
         if waitname in self._waitlist:
-            for k, v in self._waitlist[waitname].iteritems():
+            for k, v in self._waitlist[waitname].items():
                 v.set()
 
     def put(self, pr, cl, cmd, args):
@@ -259,7 +259,7 @@ class Device(object):
                 key = 'no_arg'
 
             if self._verbose:
-                print 'Received command : ' + str(dico)
+                print('Received command : ' + str(dico))
 
             type_ = dico['listtype']
             if type_ == arsdkparser.ArCmdListType.NONE:
@@ -275,7 +275,7 @@ class Device(object):
 
         The application should not call this function directly.
         """
-        print 'Product disconnected !'
+        print('Product disconnected !')
         self.stop()
 
     def get_state(self, copy=True):
@@ -323,7 +323,7 @@ class Device(object):
             pr, cl, cm = name.split('.')
             cmd, buf, to = pack_command(pr, cl, cm, *args)
         except CommandError as e:
-            print 'Bad command !' + str(e)
+            print('Bad command !' + str(e))
             return NetworkStatus.ERROR
         bufno=-1
         if buf == arsdkparser.ArCmdBufferType.NON_ACK:
@@ -337,7 +337,7 @@ class Device(object):
             datatype = Bybop_NetworkAL.DataType.DATA_LOW_LATENCY
 
         if bufno == -1:
-            print 'No suitable buffer'
+            print('No suitable buffer')
             return NetworkStatus.ERROR
 
         retries = kwargs['retries'] if 'retries' in kwargs else 5
@@ -346,7 +346,7 @@ class Device(object):
         status = self._network.send_data(bufno, cmd, datatype, timeout=timeout, tries=retries+1)
 
         if status == 0 and self._verbose:
-            print 'Sent command %s.%s.%s with args %s' % (pr, cl, cm, str(args))
+            print('Sent command %s.%s.%s with args %s' % (pr, cl, cm, str(args)))
 
         return status
 
@@ -383,7 +383,7 @@ class Device(object):
         self.wait_answer('common.CommonState.AllStatesChanged')
 
     def dump_state(self):
-        print 'Internal state :'
+        print('Internal state :')
         self._state.dump()
 
     def stop(self):
@@ -509,22 +509,39 @@ class SkyController(Device):
         self.send_data('skyctrl.Common.AllStates')
         self.wait_answer('skyctrl.CommonState.AllStatesChanged')
 
+class Mambo(Device):
+    def __init__(self, ip, c2d_port, d2c_port):
+        """
+        Create and start a new Mambo device.
+
+        The connection must have been started beforehand by Connection.connect().
+
+        Arguments:
+        - ip : The product ip address
+        - c2d_port : The remote port (on which we will send data)
+        - d2c_port : The local port (on which we will read data)
+        """
+        super(Mambo, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, cmdBuffers=[127, 126])
+
+    def _init_product(self):
+        pass
+
 
 def create_and_connect(device, d2c_port, controller_type, controller_name):
     device_id = get_device_id(device)
     ip = get_ip(device)
     port = get_port(device)
     if device_id not in DeviceID.ALL:
-        print 'Unknown product ' + device_id
+        print('Unknown product ' + device_id)
         return None
 
     connection = Connection(ip, port)
     answer = connection.connect(d2c_port, controller_type, controller_name)
     if not answer:
-        print 'Unable to connect'
+        print('Unable to connect')
         return None
     if answer['status'] != 0:
-        print 'Connection refused'
+        print('Connection refused')
         return None
 
     c2d_port = answer['c2d_port']
@@ -535,4 +552,6 @@ def create_and_connect(device, d2c_port, controller_type, controller_name):
         return JumpingSumo(ip, c2d_port, d2c_port)
     elif device_id == DeviceID.SKYCONTROLLER or device_id == DeviceID.SKYCONTROLLER_2:
         return SkyController(ip, c2d_port, d2c_port)
+    elif device_id == DeviceID.MAMBO:
+        return Mambo(ip, c2d_port, d2c_port)
     return None

@@ -84,7 +84,7 @@ def _struct_unpack(fmt, string):
         c = fmt[i]
         if c == 'z':
             start = struct.calcsize(real_fmt)
-            strlen = string[start:].find('\0')
+            strlen = string[start:].find(b'\0')
             if strlen < 0:
                 raise CommandError('No null char in string')
             real_fmt += '%dsB' % strlen
@@ -97,8 +97,14 @@ def _struct_unpack(fmt, string):
                 nbarg += 1
 
     content = struct.unpack(real_fmt, string)
-    ret = tuple([content[i] for i in range(len(content)) if i not in null_idx])
-    return ret
+    tmp = tuple([content[i] for i in range(len(content)) if i not in null_idx])
+    ret = []
+    for i in tmp:
+        if isinstance(i, bytes):
+            ret.append(str(i, 'utf-8'))
+        else:
+            ret.append(i)
+    return tuple(ret)
 
 def pack_command(s_proj, s_cls, s_cmd, *args):
     """
@@ -160,7 +166,13 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
     argsfmt, needed = _format_string_for_cmd(cmd)
     if needed:
         try:
-            ret += _struct_pack(argsfmt, *args)
+            cmd_args = []
+            for arg in args:
+                if isinstance(arg, str):
+                    cmd_args.append(bytes(arg, 'utf-8'))
+                else:
+                    cmd_args.append(arg)
+            ret += _struct_pack(argsfmt, *cmd_args)
         except IndexError:
             raise CommandError('Missing arguments')
         except TypeError:

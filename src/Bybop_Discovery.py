@@ -12,6 +12,7 @@ class DeviceID(object):
     JUMPING_NIGHT = '0905'
     JUMPING_RACE = '0906'
     BEBOP_2 = '090c'
+    MAMBO = '090b'
 
     ALL = [ BEBOP_DRONE,
             BEBOP_2,
@@ -20,6 +21,7 @@ class DeviceID(object):
             JUMPING_NIGHT,
             SKYCONTROLLER,
             SKYCONTROLLER_2,
+            MAMBO,
         ]
 
 class Discovery(object):
@@ -85,7 +87,7 @@ class Discovery(object):
             self._services[name] = info
             self._signal_change()
         else:
-            print 'Found a service witout info : ' + name + '. Stopping !'
+            print('Found a service witout info : ' + name + '. Stopping !')
             self.stop()
 
 

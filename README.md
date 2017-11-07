@@ -6,7 +6,7 @@ This implementation of the SDK is designed to be an example implementation for p
 
 Prerequisites:
 
-* python 2.7, with threading support
+* python 3, with threading support
 
 ## Status
 
