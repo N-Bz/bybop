@@ -207,6 +207,9 @@ def unpack_command(buf):
 
     A CommandError is raised if the command is in a bad format.
     """
+    # Skip empty commands
+    if not buf:
+        return {}, False
     # Read the project/cls/cmd from the buffer
     try:
         (i_proj, i_cls, i_cmd) = struct.unpack('<BBH', buf[:4])

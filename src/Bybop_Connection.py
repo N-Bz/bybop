@@ -65,7 +65,12 @@ class Connection(object):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((self._ip, self._port))
             sock.send(bytes(jsonReq, 'utf-8'))
-            jsonRet = sock.recv(4096)[:-1].decode('utf-8')
+            jsonRaw = sock.recv(4096)
+            # Skip last null char if present
+            if jsonRaw[-1] == 0:
+                jsonRet = jsonRaw[:-1].decode('utf-8')
+            else:
+                jsonRet = jsonRaw.decode('utf-8')
             sock.close()
         except socket.error:
             return None
