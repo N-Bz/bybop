@@ -431,6 +431,18 @@ class BebopDrone(Device):
         """
         self.send_data('ardrone3.Piloting.Emergency')
 
+    def start_streaming(self):
+        """
+        Starts the video streaming (it can be recieved by an external RTP client on port 55004(rtp)/55005(rtcp).
+        """
+        self.send_data('ardrone3.MediaStreaming.VideoEnable', 1)
+
+    def stop_streaming(self):
+        """
+        Stops the video streaming.
+        """
+        self.send_data('ardrone3.MediaStreaming.VideoEnable', 0)
+
 class JumpingSumo(Device):
     def __init__(self, ip, c2d_port, d2c_port):
         """

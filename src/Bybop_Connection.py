@@ -59,6 +59,8 @@ class Connection(object):
         dico['controller_name'] = controller_name
         if device_id is not None:
             dico['device_id'] = device_id
+        dico['arstream2_client_stream_port'] = 55004
+        dico['arstream2_client_control_port'] = 55005
         jsonReq = json.dumps(dico, separators=(',', ':'))
 
         try:
