@@ -558,7 +558,7 @@ def create_and_connect(device, d2c_port, controller_type, controller_name):
 
     c2d_port = answer['c2d_port']
 
-    if device_id == DeviceID.BEBOP_DRONE or device_id == DeviceID.BEBOP_2:
+    if device_id == DeviceID.BEBOP_DRONE or device_id == DeviceID.BEBOP_2 or device_id == DeviceID.DISCO:
         return BebopDrone(ip, c2d_port, d2c_port)
     elif device_id == DeviceID.JUMPING_SUMO or device_id == DeviceID.JUMPING_NIGHT or device_id == DeviceID.JUMPING_RACE:
         return JumpingSumo(ip, c2d_port, d2c_port)
