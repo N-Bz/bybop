@@ -1,6 +1,6 @@
 # bybop : Bebop Drone control from python
 
-An alternate implementation of the ARSDK protocols used by the [Parrot Bebop Drone](https://www.parrot.com/us/drones/parrot-bebop-2) and the [Parrot Mini Drones](http://www.parrot.com/usa/products/minidrones/).
+An alternate implementation of the ARSDK protocols used by the [Parrot Bebop Drone](https://www.parrot.com/us/drones/parrot-bebop-2), [Parrot Disco FPV Drone](https://www.parrot.com/us/drones/parrot-disco-fpv) and the [Parrot Mini Drones](http://www.parrot.com/usa/products/minidrones/).
 
 This implementation of the SDK is designed to be an example implementation for people willing to use the Parrot products in languages not supported by the [official Parrot SDK](https://github.com/Parrot-Developers/arsdk_manifests).
 

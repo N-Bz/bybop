@@ -13,6 +13,7 @@ class DeviceID(object):
     JUMPING_RACE = '0906'
     BEBOP_2 = '090c'
     MAMBO = '090b'
+    DISCO = '090e'
 
     ALL = [ BEBOP_DRONE,
             BEBOP_2,
@@ -22,6 +23,7 @@ class DeviceID(object):
             SKYCONTROLLER,
             SKYCONTROLLER_2,
             MAMBO,
+            DISCO,
         ]
 
 class Discovery(object):
