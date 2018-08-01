@@ -1,38 +1,68 @@
-# This sample uses https://pypi.python.org/pypi/zeroconf as its MDNS implementation
+# This sample uses https://pypi.python.org/pypi/zeroconf
+# as its MDNS implementation
 
 from zeroconf import ServiceBrowser, Zeroconf
 import socket
 import threading
 
+
 class DeviceID(object):
+    # Drones
     BEBOP_DRONE = '0901'
     JUMPING_SUMO = '0902'
-    SKYCONTROLLER = '0903'
-    SKYCONTROLLER_2 = '090f'
     JUMPING_NIGHT = '0905'
     JUMPING_RACE = '0906'
     BEBOP_2 = '090c'
     MAMBO = '090b'
     DISCO = '090e'
+    ANAFI = '0914'
 
-    ALL = [ BEBOP_DRONE,
-            BEBOP_2,
-            JUMPING_SUMO,
-            JUMPING_RACE,
-            JUMPING_NIGHT,
-            SKYCONTROLLER,
-            SKYCONTROLLER_2,
-            MAMBO,
-            DISCO,
-        ]
+    # Remote controllers
+    SKYCONTROLLER = '0903'
+    SKYCONTROLLER_2 = '090f'
+    SKYCONTROLLER_2P = '0915'
+    SKYCONTROLLER_3 = '0918'
+
+    BEBOP_FAMILY = [
+        BEBOP_DRONE,
+        BEBOP_2,
+        DISCO,
+    ]
+
+    ANAFI_FAMILY = [
+        ANAFI,
+    ]
+
+    JUMPING_FAMILY = [
+        JUMPING_SUMO,
+        JUMPING_NIGHT,
+        JUMPING_RACE,
+    ]
+
+    MAMBO_FAMILY = [
+        MAMBO,
+    ]
+
+    DRONES = BEBOP_FAMILY + ANAFI_FAMILY + JUMPING_FAMILY + MAMBO_FAMILY
+
+    REMOTES = [
+        SKYCONTROLLER,
+        SKYCONTROLLER_2,
+        SKYCONTROLLER_2P,
+        SKYCONTROLLER_3
+    ]
+
+    ALL = DRONES + REMOTES
+
 
 class Discovery(object):
     """
     Basic implementation of a MDNS search for ARSDK Devices.
 
-    The protocol here is not covered by the ARSDK but this implementation is here to provide a fully working
-    sample code.
+    The protocol here is not covered by the ARSDK but this implementation is
+    here to provide a fully working sample code.
     """
+
     def __init__(self, deviceId):
         """
         Create and start a researcher for devices on network.
@@ -46,7 +76,9 @@ class Discovery(object):
         self._lock = threading.RLock()
         self._cond = threading.Condition(self._lock)
         for did in deviceId:
-            self._browser.append(ServiceBrowser(self._zeroconf, '_arsdk-' + str(did) + '._udp.local.', self))
+            self._browser.append(ServiceBrowser(self._zeroconf, '_arsdk-' +
+                                                str(did) + '._udp.local.',
+                                                self))
 
     def stop(self):
         """
@@ -97,13 +129,16 @@ def get_name(device):
     """ Get the display name of a device """
     return device.name[0:-(len(device.type) + 1)]
 
+
 def get_ip(device):
     """ Get the IP, as string, of a device """
     return socket.inet_ntoa(device.address)
 
+
 def get_port(device):
     """ Get the port, as string, of a device """
     return str(device.port)
+
 
 def get_device_id(device):
     """ Get the device_id of a device """

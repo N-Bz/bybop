@@ -2,11 +2,12 @@ import socket
 import struct
 import threading
 
+
 class DataType:
-    ACK=1
-    DATA=2
-    DATA_LOW_LATENCY=3
-    DATA_WITH_ACK=4
+    ACK = 1
+    DATA = 2
+    DATA_LOW_LATENCY = 3
+    DATA_WITH_ACK = 4
 
 
 class NetworkAL(object):
@@ -16,16 +17,18 @@ class NetworkAL(object):
     This implementations is fully compliant with the protocol, and has no major
     limiations.
 
-    This implementation uses a thread to do background reads from the socket, and
-    send data to the application through a listener. This listener must implement a
-    'data_received' function, which will receive the following arguments:
+    This implementation uses a thread to do background reads from the socket,
+    and send data to the application through a listener. This listener must
+    implement a 'data_received' function, which will receive the following
+    arguments:
     - type : The type of data received (ack, data, low latency, data with ack)
     - buf : The buffer on which this data was retrieved
     - seq : The sequence number of the data
-    - recv_data : The actual data, as a packed string (use the struct module to unpack)
-    And a 'did_disconnect' function, without arguments, which will be called if the product
-    does not send any data on the network (probably because we lost the network link, or
-    because the product has run out of battery)
+    - recv_data : The actual data, as a packed string (use the struct module
+                  to unpack)
+    And a 'did_disconnect' function, without arguments, which will be called
+    if the product does not send any data on the network (probably because we
+    lost the network link, or because the product has run out of battery)
     """
 
     def __init__(self, ip, c2d_port, d2c_port, listener):
@@ -36,8 +39,8 @@ class NetworkAL(object):
         - ip (string) : The device address
         - c2d_port : The remove reading port
         - d2c_port : The local reading port
-        - listener : A listener which will have its data_received function called
-                     when a data is received from the network.
+        - listener : A listener which will have its data_received function
+                     called when a data is received from the network.
         """
         self._ip = ip
         self._c2d_port = int(c2d_port)
@@ -75,7 +78,6 @@ class NetworkAL(object):
         self._thread.start()
         self._running = True
 
-
     def send_data(self, type, buf, seq, data):
         """
         Send the given data to the remote ARNetworkAL.
@@ -88,13 +90,14 @@ class NetworkAL(object):
         - type : The type of data (ack, data, low latency, data with ack)
         - buf : The target buffer for the data
         - seq : The sequence number of the data
-        - data : The actual data (ususally a string packed with the struct module)
+        - data : The actual data (ususally a string packed with the struct
+                 module)
         """
         sock_data = struct.pack('<BBBI', type, buf, seq, len(data) + 7)
         sock_data += data
         try:
             self._send_sock.sendto(sock_data, (self._ip, self._c2d_port))
-        except:
+        except socket.error:
             return False
         return True
 
@@ -102,7 +105,7 @@ class NetworkAL(object):
         while self._alive:
             try:
                 sock_data, _ = self._recv_sock.recvfrom(66000)
-            except Exception as e:
+            except socket.error:
                 break
 
             the_data = sock_data

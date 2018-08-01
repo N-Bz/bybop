@@ -2,31 +2,38 @@ import Bybop_NetworkAL
 import struct
 import threading
 
+
 class NetworkStatus:
     OK = 0
     ERROR = 1
     TIMEOUT = 2
 
+
 class Network(object):
     """
     Simple implementation of the ARNetwork protocol.
 
-    This implementation does not support intenal fifos. If multiple threads tries to send data on the
-    same buffer at the same time, the actual send order is undefined.
+    This implementation does not support intenal fifos. If multiple threads
+    tries to send data on the same buffer at the same time, the actual send
+    order is undefined.
 
-    The 'send_data' call is blocking to allow simpler implementation, but is not doing busy waiting so
-    it can be called from a thread without locking the GIL in python implementations that use one.
+    The 'send_data' call is blocking to allow simpler implementation, but is
+    not doing busy waiting so it can be called from a thread without locking
+    the GIL in python implementations that use one.
 
-    This implementation use a listener to warn the application of newly received data. The listener
-    should implement a 'data_received' function accepting the following arguments:
+    This implementation use a listener to warn the application of newly
+    received data. The listener should implement a 'data_received' function
+    accepting the following arguments:
     - buf : The buffer on which this data was retrieved
-    - recv_data : The actual data, as a packed string (use the struct module to unpack)
-    And a 'did_disconnect' function, without arguments, which will be called if the product
-    does not send any data on the network (probably because we lost the network link, or
-    because the product has run out of battery)
+    - recv_data : The actual data, as a packed string (use the struct module
+                  to unpack)
+    And a 'did_disconnect' function, without arguments, which will be called
+    if the product does not send any data on the network (probably because we
+    lost the network link, or because the product has run out of battery)
     """
 
-    def __init__(self, ip, c2d_port, d2c_port, send_buffers, recv_buffers, listener):
+    def __init__(self, ip, c2d_port, d2c_port,
+                 send_buffers, recv_buffers, listener):
         """
         Create a new instance of ARNetwork.
 
@@ -36,14 +43,17 @@ class Network(object):
         - ip (string) : The device address
         - c2d_port : The remove reading port
         - d2c_port : The local reading port
-        - send_buffers : List of buffers which should accept data from the application
-                       (i.e. which will be given to the send_data function)
+        - send_buffers : List of buffers which should accept data from the
+                         application (i.e. which will be given to the send_data
+                         function)
         - recv_buffers : List of buffers which should accept incoming data
         """
         self._netal = Bybop_NetworkAL.NetworkAL(ip, c2d_port, d2c_port, self)
         self._listener = listener
-        self._send_buffers = list(send_buffers) # The application writed to these (send to network)
-        self._recv_buffers = list(recv_buffers) # The application reads from these (read from network)
+        # The application writed to these (send to network)
+        self._send_buffers = list(send_buffers)
+        # The application reads from these (read from network)
+        self._recv_buffers = list(recv_buffers)
         self._send_seq = {}
         self._recv_seq = {}
         self._ack_events = {}
@@ -58,8 +68,6 @@ class Network(object):
             self._ack_seq[sndb] = 0
         for rcvb in self._recv_buffers:
             self._recv_seq[rcvb] = 255
-
-
 
     def stop(self):
         """
@@ -82,7 +90,7 @@ class Network(object):
         self._netal.start()
 
     def _get_seq(self, buf):
-        if not buf in self._send_seq:
+        if buf not in self._send_seq:
             self._send_seq[buf] = 0
         ret = self._send_seq[buf]
         self._send_seq[buf] += 1
@@ -94,22 +102,26 @@ class Network(object):
         Send some data over the network, and return an ARNetworkStatus.
 
         The keyword arguments are only used for acknowledged data.
-        For other data, the timeout is irrelevant, and only one try will be made.
+        For other data, the timeout is irrelevant, and only one try will be
+        made.
 
-        For acknowledged data, this function will block until either the acknowledge is received,
-        or all the tries have been consumed in timeouts. For other data, this function returns
-        almost immediately.
+        For acknowledged data, this function will block until either the
+        acknowledge is received, or all the tries have been consumed in
+        timeouts. For other data, this function returns almost immediately.
 
         Arguments:
-        - buf : The target buffer for the data (must be part of the send_buffers list given to __init__)
+        - buf : The target buffer for the data (must be part of the
+                send_buffers list given to __init__)
         - data : The data to send
         - type : The type of the data (needs ack or not)
 
         Keyword arguments:
-        - timeout : Timeout in floating point number of seconds, or None if no timeout (default 0.15)
-        - tries : Total number of tries before considering a data as lost (default 5)
+        - timeout : Timeout in floating point number of seconds, or None if no
+                    timeout (default 0.15)
+        - tries : Total number of tries before considering a data as lost
+                  (default 5)
         """
-        if not buf in self._send_buffers:
+        if buf not in self._send_buffers:
             return NetworkStatus.ERROR
 
         seqnum = self._get_seq(buf)
@@ -118,7 +130,8 @@ class Network(object):
 
         with self._buf_locks[buf]:
 
-            # If we need an ack, clear any pending ack event, and set the requested seqnum
+            # If we need an ack, clear any pending ack event,
+            # and set the requested seqnum
             if needack:
                 with self._ack_events_lock:
                     self._ack_events[buf].clear()
@@ -128,22 +141,27 @@ class Network(object):
             while tries > 0 and status == NetworkStatus.TIMEOUT:
                 tries -= 1
 
-                status = NetworkStatus.OK if self._netal.send_data(type, buf, seqnum, data) else NetworkStatus.ERROR
+                status = NetworkStatus.OK if self._netal.send_data(
+                    type, buf, seqnum, data) else NetworkStatus.ERROR
                 # We only set TIMEOUT status for acknowledged data
-                if needack and status == NetworkStatus.OK: # Data with ack properly sent
-                    status = NetworkStatus.OK if self._ack_events[buf].wait(timeout) else NetworkStatus.TIMEOUT
+                if needack and status == NetworkStatus.OK:
+                    # Data with ack properly sent
+                    status = NetworkStatus.OK if self._ack_events[buf].wait(
+                        timeout) else NetworkStatus.TIMEOUT
         return status
 
     def _send_ack(self, buf, seq):
         answer = struct.pack('<B', seq)
         abuf = buf + 128
-        self._netal.send_data(Bybop_NetworkAL.DataType.ACK, abuf, self._get_seq(abuf), answer)
+        self._netal.send_data(Bybop_NetworkAL.DataType.ACK,
+                              abuf, self._get_seq(abuf), answer)
 
     def _send_pong(self, data):
-        self._netal.send_data(Bybop_NetworkAL.DataType.DATA, 1, self._get_seq(1), data)
+        self._netal.send_data(Bybop_NetworkAL.DataType.DATA,
+                              1, self._get_seq(1), data)
 
     def _should_accept(self, buf, seq):
-        if not buf in self._recv_seq:
+        if buf not in self._recv_seq:
             return False
 
         prev = self._recv_seq[buf]
@@ -154,14 +172,13 @@ class Network(object):
             self._recv_seq[buf] = seq
         return ok
 
-
     def data_received(self, type, buf, seq, recv_data):
         """
         Implementation of the NetworkAL listener.
 
         This function should not be called direcly by application code !
         """
-        if buf == 0: # This is a ping, send a pong !
+        if buf == 0:  # This is a ping, send a pong !
             self._send_pong(recv_data)
 
         if type == Bybop_NetworkAL.DataType.ACK:

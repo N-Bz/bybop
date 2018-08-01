@@ -1,6 +1,6 @@
 # bybop : Bebop Drone control from python
 
-An alternate implementation of the ARSDK protocols used by the [Parrot Bebop Drone](https://www.parrot.com/us/drones/parrot-bebop-2), [Parrot Disco FPV Drone](https://www.parrot.com/us/drones/parrot-disco-fpv) and the [Parrot Mini Drones](http://www.parrot.com/usa/products/minidrones/).
+An alternate implementation of the ARSDK protocols used by the [Parrot Bebop Drone](https://www.parrot.com/us/drones/parrot-bebop-2), [Parrot Disco FPV Drone](https://www.parrot.com/us/drones/parrot-disco-fpv), the Parrot Mini Drones (Jumping Sumo & Mambo), and the [Parrot Anafi](https://www.parrot.com/us/drones/anafi)
 
 This implementation of the SDK is designed to be an example implementation for people willing to use the Parrot products in languages not supported by the [official Parrot SDK](https://github.com/Parrot-Developers/arsdk_manifests).
 
@@ -13,7 +13,7 @@ Prerequisites:
 This project is a work in progress, and thus is not stable, in every possible way:
  * Current error handling is almost non-existant (so most error will lead to a crash)
  * Current API (Bybop_Device) is non-final and will probably change in the future
- 
+
 ## Installation
 
 This project uses git submodule to include the official Parrot `arsdk-xml` repo. After cloning this repo, you must initialize & update the submodules:
@@ -47,19 +47,19 @@ A convenience function is given in the `Bybop_Device` module:
     controller_name = 'Application Name'
     drone = create_and_connect(some_device, d2c_port, controller_type, controller_name)
 
-This function will return either `None` (error during connection), or a `BebopDrone`, `JumpingSumo`, or `SkyController` instance.
+This function will return either `None` (error during connection), or a `BebopDrone`, `JumpingSumo`, `Mambo`, `Anafi` or `SkyController` instance.
 
 ### Disconnecting
 
 Just call:
 
     drone.stop()
-    
+
 The device will automatically disconnect 5 seconds after receiving the last data.
 
 ## Interacting with the drone
 
-The `Bybop_Device` module provides the main interface with the device. The `Device` class is device-agnostic and can be used to send/receive generic data. The `BebopDrone` and `JumpingSumo` classes inherit from the `Device` class and add some helpers.
+The `Bybop_Device` module provides the main interface with the device. The `Device` class is device-agnostic and can be used to send/receive generic data. The `BebopDrone`, `JumpingSumo`, and others classes inherit from the `Device` class and add some helpers.
 
 Note: In all further references, commands are spelled in `'project.class.command'` format. For newer commands in features (e.g. the `drone_manager` feature of the SkyController 2) instead of projects, the class argument should be empty (i.e. `'feature..command'` for single args, or `fn(feature, '', command)` for multiple args).
 
@@ -72,9 +72,9 @@ Every command received is put in a three-level state dictionnary within the `Dev
 Where `'project.class.command'` represents the name of the command (i.e. the command `BatteryStateChanged` of class `CommonState` in project `common` is noted `common.CommonState.BatteryStateChanged`).
 The `get_value()` function returns either:
 * `None` for never received commands
-* A dictionnary mapping the arguments names to their values for most commands (i.e. for the `BatteryStateChanged`, the dictionnary will have a format like `{u'percent': 75}`)
-* A list of such dictionnaries, for commands declared as `listtype=LIST` in the `libARCommands` xml files. (e.g. the `'ARDrone3.NetworkState.WifiAuthChannelListChanged'` command)
-* A dictionnary of such dicitonnaries for commands declared as `listtype=MAP` in the `libARCommands` xml files. In this case, the first argument value will be used as a key to the top-level dictionnary. (e.g. the `'common.CommonState.SensorStatesListChanged'` command)
+* A dictionnary mapping the arguments names to their values for most commands (i.e. for the `BatteryStateChanged`, the dictionnary will have a format like `{'percent': 75}`)
+* A list of such dictionnaries, for commands declared as `listtype=LIST` in the `arsdk-xml` xml files. (e.g. the `'ARDrone3.NetworkState.WifiAuthChannelListChanged'` command)
+* A dictionnary of such dicitonnaries for commands declared as `listtype=MAP` in the `arsdk-xml` xml files. In this case, the first argument value will be used as a key to the top-level dictionnary. (e.g. the `'common.CommonState.SensorStatesListChanged'` command)
 
 Some predefined getters might also be defined:
 
@@ -83,9 +83,9 @@ Some predefined getters might also be defined:
 To synchronise your code on a state, you can do the following:
 
     drone.wait_answer('project.class.command')
-    
+
 This function will wait until the given command is received (it has a timeout parameter, defaulting to 5 seconds)
-    
+
 ### Sending commands
 
 To send a command to the drone, you can either use predefined helpers from the `BebopDrone` or `JumpingSumo` class:

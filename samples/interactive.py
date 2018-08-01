@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-import os
 
 import code
 import readline
@@ -9,7 +8,7 @@ import rlcompleter
 
 sys.path.append('../src')
 
-from Bybop_Discovery import *
+from Bybop_Discovery import Discovery, DeviceID, get_name
 import Bybop_Device
 
 print('Searching for devices')
@@ -34,7 +33,8 @@ d2c_port = 54321
 controller_type = "PC"
 controller_name = "bybop shell"
 
-drone = Bybop_Device.create_and_connect(device, d2c_port, controller_type, controller_name)
+drone = Bybop_Device.create_and_connect(
+    device, d2c_port, controller_type, controller_name)
 
 if drone is None:
     print('Unable to connect to a product')

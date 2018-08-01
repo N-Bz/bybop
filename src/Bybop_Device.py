@@ -6,11 +6,13 @@ import pprint
 import copy
 
 import Bybop_NetworkAL
-from Bybop_Network import *
-from Bybop_Commands import *
-from Bybop_Discovery import *
-from Bybop_Connection import *
+import Bybop_Network
+import Bybop_Commands
+import Bybop_Discovery
+import Bybop_Connection
 import arsdkparser
+from Bybop_Discovery import DeviceID
+
 
 class State(object):
     """
@@ -20,23 +22,26 @@ class State(object):
     The second level key is the project of the classs.
     The third level key is the command.
 
-    The content for each command depends on the command type. For normal commands,
-    the content is a dictionnary of arguments in the form { 'name':value ... }. If
-    the command is a list command, then the content is a list of arguments dictionnaries.
-    If the command is a map command, then the content is a dictionnary of arguments
-    dictionnaries, indexed by their first argument.
+    The content for each command depends on the command type. For normal
+    commands, the content is a dictionnary of arguments in the form
+    { 'name':value ... }. If the command is a list command, then the content is
+    a list of arguments dictionnaries. If the command is a map command, then
+    the content is a dictionnary of arguments dictionnaries, indexed by their
+    first argument.
 
     This class use internal locks to allow proper multithread access.
 
-    This class also implements a wait_for function to do non-busy wait for commands
-    reception (i.e. wait for an answer from the device), with an optionnal timeout.
+    This class also implements a wait_for function to do non-busy wait for
+    commands reception (i.e. wait for an answer from the device), with an
+    optionnal timeout.
     """
 
     def __init__(self):
         """
         Create a new, empty, state.
 
-        Creating a new state should only be done from an Device __init__ function.
+        Creating a new state should only be done from an Device __init__
+        function.
         """
         self._dict = {}
         self._waitlist = {}
@@ -44,13 +49,13 @@ class State(object):
         self._waitid = 0
 
     def _getcldic(self, pr, cl, create=True):
-        if not pr in self._dict:
+        if pr not in self._dict:
             if create:
                 self._dict[pr] = {}
             else:
                 return None
         pr_d = self._dict[pr]
-        if not cl in pr_d:
+        if cl not in pr_d:
             if create:
                 pr_d[cl] = {}
             else:
@@ -73,11 +78,11 @@ class State(object):
             event = threading.Event()
             wid = self._waitid
             self._waitid += 1
-            if not name in self._waitlist:
+            if name not in self._waitlist:
                 self._waitlist[name] = {}
             self._waitlist[name][wid] = event
 
-        res =  event.wait(timeout)
+        res = event.wait(timeout)
 
         with self._lock:
             if res:
@@ -90,7 +95,7 @@ class State(object):
     def _signal_waiting(self, pr, cl, cmd):
         waitname = '%s.%s.%s' % (pr, cl, cmd)
         if waitname in self._waitlist:
-            for k, v in self._waitlist[waitname].items():
+            for _, v in self._waitlist[waitname].items():
                 v.set()
 
     def put(self, pr, cl, cmd, args):
@@ -117,8 +122,8 @@ class State(object):
         """
         Put a new list-command in the dictionnary.
 
-        This function handles list-commands by appending the arguments dictionnary
-        to the command list.
+        This function handles list-commands by appending the arguments
+        dictionnary to the command list.
 
         Arguments:
         - pr : Project name of the command
@@ -128,7 +133,7 @@ class State(object):
         """
         with self._lock:
             pr_cl = self._getcldic(pr, cl)
-            if not cmd in pr_cl:
+            if cmd not in pr_cl:
                 pr_cl[cmd] = []
             pr_cl[cmd].append(copy.deepcopy(args))
             self._signal_waiting(pr, cl, cmd)
@@ -137,8 +142,8 @@ class State(object):
         """
         Put a new map-command in the dictionnary.
 
-        This function saves the arguments dictionnary, indexed by its first element, in
-        the command disctionnary.
+        This function saves the arguments dictionnary, indexed by its first
+        element, in the command disctionnary.
 
         Arguments:
         - pr : Project name of the command
@@ -149,20 +154,20 @@ class State(object):
         """
         with self._lock:
             pr_cl = self._getcldic(pr, cl)
-            if not cmd in pr_cl:
+            if cmd not in pr_cl:
                 pr_cl[cmd] = {}
             pr_cl[cmd][key] = copy.deepcopy(args)
             self._signal_waiting(pr, cl, cmd)
-
 
     def get_value(self, name):
         """
         Get the current value of a command.
 
         For never received commands, None is returned
-        For normal commands, an arguments dictionnary in the { 'name':value ... } format is
-        returned. For list-commands, a list of such disctionnaries is returned. For map-commands,
-        a dictionnary of such dictionnaries is returned.
+        For normal commands, an arguments dictionnary in the
+        { 'name':value ... } format is returned.
+        For list-commands, a list of such disctionnaries is returned.
+        For map-commands, a dictionnary of such dictionnaries is returned.
 
         Arguments:
         - name : The command to get, in 'project.class.command' notation
@@ -175,7 +180,7 @@ class State(object):
             pr_cl = self._getcldic(pr, cl)
             if pr_cl is None:
                 ret = None
-            elif not cmd in pr_cl:
+            elif cmd not in pr_cl:
                 ret = None
             else:
                 ret = copy.deepcopy(pr_cl[cmd])
@@ -183,7 +188,8 @@ class State(object):
 
     def duplicate(self):
         """
-        Return a new, non-synchronized (i.e. pure dict) copy of the internal dictionnary.
+        Return a new, non-synchronized (i.e. pure dict) copy of
+        the internal dictionnary.
         """
         with self._lock:
             ret = copy.deepcopy(self._dict)
@@ -203,23 +209,25 @@ class Device(object):
     """
     Simple wrapper around ARNetwork + ARCommands.
 
-    This class is subclassed for each device to add convenience functions, and proper
-    initialization. It should not be used directly.
+    This class is subclassed for each device to add convenience functions, and
+    proper initialization. It should not be used directly.
     """
 
-    def __init__(self, ip, c2d_port, d2c_port, ackBuffer=-1, nackBuffer=-1, urgBuffer=-1, cmdBuffers=[], skipCommonInit=False, verbose=False):
+    def __init__(self, ip, c2d_port, d2c_port,
+                 ackBuffer=-1, nackBuffer=-1, urgBuffer=-1,
+                 cmdBuffers=[], skipCommonInit=False, verbose=False):
         """
         Create and start a new Device.
 
-        The connection must have been started beforehand by Connection.connect().
+        The connection must have been started before by Connection.connect().
 
         Arguments:
         - ip : The product ip address
         - c2d_port : The remote port (on which we will send data)
         - d2c_port : The local port (on which we will read data)
-        - ackBuffer : The buffer for acknowledged data (-1 means no buffer)
-        - nackBuffer : The buffer for non acknowledged data (-1 means no buffer)
-        - urgBuffer : The buffer for high priority data (-1 means no buffer)
+        - ackBuffer : The buffer for acknowledged data (-1 if no buffer)
+        - nackBuffer : The buffer for non acknowledged data (-1 if no buffer)
+        - urgBuffer : The buffer for high priority data (-1 if no buffer)
         - cmdBuffers : The buffers from the device which contains ARCommands
         - skipCommonInit : Skip the common init phase (only for SkyController)
         - verbose : Set verbose mode (prints sent/received commands)
@@ -227,7 +235,8 @@ class Device(object):
         self._verbose = verbose
         inb = [i for i in (ackBuffer, nackBuffer, urgBuffer) if i > 0]
         outb = cmdBuffers
-        self._network = Network(ip, c2d_port, d2c_port, inb, outb, self)
+        self._network = Bybop_Network.Network(ip, c2d_port, d2c_port,
+                                              inb, outb, self)
         self._ackBuffer = ackBuffer
         self._nackBuffer = nackBuffer
         self._urgBuffer = urgBuffer
@@ -241,12 +250,16 @@ class Device(object):
         """
         Save the recieved data in the state.
 
-        This function is called by the internal Network, and should not be called
-        directly by the application.
+        This function is called by the internal Network, and should not be
+        called directly by the application.
         """
         if buf in self._cmdBuffers:
-            dico, ok = unpack_command(data)
-            if not ok:
+            try:
+                dico, ok = Bybop_Commands.unpack_command(data)
+                if not ok:
+                    return
+            except Bybop_Commands.CommandError as e:
+                print('Bad command !' + str(e))
                 return
 
             pr, cl, cmd = dico['proj'], dico['class'], dico['cmd']
@@ -254,7 +267,7 @@ class Device(object):
             try:
                 args = dico['args']
                 key = dico['arg0']
-            except:
+            except KeyError:
                 args = {}
                 key = 'no_arg'
 
@@ -283,11 +296,12 @@ class Device(object):
         Get the product state.
 
         Arguments:
-        - copy : if True, this function will return a pure dictionnary copy of the state
-                 if False, this function will return a reference to the internal state
-                 (default True)
+        - copy : If True, this function will return a pure dictionnary copy of
+                 the state. If False, this function will return a reference to
+                 the internal state (default True)
 
-        When requesting a non-copy state, the application should NEVER try to modify it.
+        When requesting a non-copy state, the application should NEVER try to
+        modify it.
 
         To get a value from the internal state, use its 'get_value' function.
         """
@@ -301,8 +315,9 @@ class Device(object):
         Get the current battery percentage.
         """
         try:
-            return self._state.get_value('common.CommonState.BatteryStateChanged')['percent']
-        except:
+            return self._state.get_value(
+                'common.CommonState.BatteryStateChanged')['percent']
+        except KeyError:
             return 0
 
     def send_data(self, name, *args, **kwargs):
@@ -321,11 +336,11 @@ class Device(object):
         """
         try:
             pr, cl, cm = name.split('.')
-            cmd, buf, to = pack_command(pr, cl, cm, *args)
-        except CommandError as e:
+            cmd, buf, _ = Bybop_Commands.pack_command(pr, cl, cm, *args)
+        except Bybop_Commands.CommandError as e:
             print('Bad command !' + str(e))
-            return NetworkStatus.ERROR
-        bufno=-1
+            return Bybop_Network.NetworkStatus.ERROR
+        bufno = -1
         if buf == arsdkparser.ArCmdBufferType.NON_ACK:
             bufno = self._nackBuffer
             datatype = Bybop_NetworkAL.DataType.DATA
@@ -338,15 +353,17 @@ class Device(object):
 
         if bufno == -1:
             print('No suitable buffer')
-            return NetworkStatus.ERROR
+            return Bybop_Network.NetworkStatus.ERROR
 
         retries = kwargs['retries'] if 'retries' in kwargs else 5
         timeout = kwargs['timeout'] if 'timeout' in kwargs else 0.15
 
-        status = self._network.send_data(bufno, cmd, datatype, timeout=timeout, tries=retries+1)
+        status = self._network.send_data(
+            bufno, cmd, datatype, timeout=timeout, tries=retries+1)
 
         if status == 0 and self._verbose:
-            print('Sent command %s.%s.%s with args %s' % (pr, cl, cm, str(args)))
+            print('Sent command %s.%s.%s with args %s' %
+                  (pr, cl, cm, str(args)))
 
         return status
 
@@ -354,8 +371,8 @@ class Device(object):
         """
         Wait for an answer from the product.
 
-        This function will block until the product sends the requested command, or the timeout
-        is expired.
+        This function will block until the product sends the requested command,
+        or the timeout is expired.
 
         Return True if the command was received, False if a timeout occured.
 
@@ -398,14 +415,16 @@ class BebopDrone(Device):
         """
         Create and start a new BebopDrone device.
 
-        The connection must have been started beforehand by Connection.connect().
+        The connection must have been started before by Connection.connect().
 
         Arguments:
         - ip : The product ip address
         - c2d_port : The remote port (on which we will send data)
         - d2c_port : The local port (on which we will read data)
         """
-        super(BebopDrone, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, urgBuffer=12, cmdBuffers=[127, 126])
+        super(BebopDrone, self).__init__(ip, c2d_port, d2c_port,
+                                         ackBuffer=11, nackBuffer=10,
+                                         urgBuffer=12, cmdBuffers=[127, 126])
 
     def _init_product(self):
         # Deactivate video streaming
@@ -433,7 +452,8 @@ class BebopDrone(Device):
 
     def start_streaming(self):
         """
-        Starts the video streaming (it can be recieved by an external RTP client on port 55004(rtp)/55005(rtcp).
+        Starts the video streaming (it can be recieved by an external RTP
+        client on port 55004(rtp)/55005(rtcp).
         """
         self.send_data('ardrone3.MediaStreaming.VideoEnable', 1)
 
@@ -443,19 +463,62 @@ class BebopDrone(Device):
         """
         self.send_data('ardrone3.MediaStreaming.VideoEnable', 0)
 
-class JumpingSumo(Device):
+
+class Anafi(Device):
     def __init__(self, ip, c2d_port, d2c_port):
         """
-        Create and start a new JumpingSumo device.
+        Create and start a new Anafi device.
 
-        The connection must have been started beforehand by Connection.connect().
+        The connection must have been started before by Connection.connect().
 
         Arguments:
         - ip : The product ip address
         - c2d_port : The remote port (on which we will send data)
         - d2c_port : The local port (on which we will read data)
         """
-        super(JumpingSumo, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, cmdBuffers=[127, 126])
+        super(Anafi, self).__init__(ip, c2d_port, d2c_port,
+                                    ackBuffer=11, nackBuffer=10,
+                                    urgBuffer=12, cmdBuffers=[127, 126])
+
+    def _init_product(self):
+        pass
+
+    def take_off(self):
+        """
+        Send a take off request to the Bebop Drone.
+        """
+        self.send_data('ardrone3.Piloting.TakeOff')
+
+    def land(self):
+        """
+        Send a landing request to the Bebop Drone.
+        """
+        self.send_data('ardrone3.Piloting.Landing')
+
+    def emergency(self):
+        """
+        Send an emergeny request to the Bebop Drone.
+
+        An emergency request shuts down the motors.
+        """
+        self.send_data('ardrone3.Piloting.Emergency')
+
+
+class JumpingSumo(Device):
+    def __init__(self, ip, c2d_port, d2c_port):
+        """
+        Create and start a new JumpingSumo device.
+
+        The connection must have been started before by Connection.connect().
+
+        Arguments:
+        - ip : The product ip address
+        - c2d_port : The remote port (on which we will send data)
+        - d2c_port : The local port (on which we will read data)
+        """
+        super(JumpingSumo, self).__init__(ip, c2d_port, d2c_port,
+                                          ackBuffer=11, nackBuffer=10,
+                                          cmdBuffers=[127, 126])
 
     def _init_product(self):
         # Deactivate video streaming
@@ -500,20 +563,23 @@ class JumpingSumo(Device):
         return self.send_data('jpsumo.Animations.Jump', jump_type)
 
 
-
 class SkyController(Device):
     def __init__(self, ip, c2d_port, d2c_port):
         """
         Create and start a new SkyController device.
 
-        The connection must have been started beforehand by Connection.connect().
+        The connection must have been started before by Connection.connect().
 
         Arguments:
         - ip : The product ip address
         - c2d_port : The remote port (on which we will send data)
         - d2c_port : The local port (on which we will read data)
         """
-        super(SkyController, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, urgBuffer=12, cmdBuffers=[127, 126], skipCommonInit=True)
+        super(SkyController, self).__init__(ip, c2d_port, d2c_port,
+                                            ackBuffer=11, nackBuffer=10,
+                                            urgBuffer=12,
+                                            cmdBuffers=[127, 126],
+                                            skipCommonInit=True)
 
     def _init_product(self):
         self.send_data('skyctrl.Settings.AllSettings')
@@ -521,33 +587,36 @@ class SkyController(Device):
         self.send_data('skyctrl.Common.AllStates')
         self.wait_answer('skyctrl.CommonState.AllStatesChanged')
 
+
 class Mambo(Device):
     def __init__(self, ip, c2d_port, d2c_port):
         """
         Create and start a new Mambo device.
 
-        The connection must have been started beforehand by Connection.connect().
+        The connection must have been started before by Connection.connect().
 
         Arguments:
         - ip : The product ip address
         - c2d_port : The remote port (on which we will send data)
         - d2c_port : The local port (on which we will read data)
         """
-        super(Mambo, self).__init__(ip, c2d_port, d2c_port, ackBuffer=11, nackBuffer=10, cmdBuffers=[127, 126])
+        super(Mambo, self).__init__(ip, c2d_port, d2c_port,
+                                    ackBuffer=11, nackBuffer=10,
+                                    cmdBuffers=[127, 126])
 
     def _init_product(self):
         pass
 
 
 def create_and_connect(device, d2c_port, controller_type, controller_name):
-    device_id = get_device_id(device)
-    ip = get_ip(device)
-    port = get_port(device)
+    device_id = Bybop_Discovery.get_device_id(device)
+    ip = Bybop_Discovery.get_ip(device)
+    port = Bybop_Discovery.get_port(device)
     if device_id not in DeviceID.ALL:
         print('Unknown product ' + device_id)
         return None
 
-    connection = Connection(ip, port)
+    connection = Bybop_Connection.Connection(ip, port)
     answer = connection.connect(d2c_port, controller_type, controller_name)
     if not answer:
         print('Unable to connect')
@@ -558,12 +627,14 @@ def create_and_connect(device, d2c_port, controller_type, controller_name):
 
     c2d_port = answer['c2d_port']
 
-    if device_id == DeviceID.BEBOP_DRONE or device_id == DeviceID.BEBOP_2 or device_id == DeviceID.DISCO:
+    if device_id in DeviceID.BEBOP_FAMILY:
         return BebopDrone(ip, c2d_port, d2c_port)
-    elif device_id == DeviceID.JUMPING_SUMO or device_id == DeviceID.JUMPING_NIGHT or device_id == DeviceID.JUMPING_RACE:
+    elif device_id in DeviceID.JUMPING_FAMILY:
         return JumpingSumo(ip, c2d_port, d2c_port)
-    elif device_id == DeviceID.SKYCONTROLLER or device_id == DeviceID.SKYCONTROLLER_2:
+    elif device_id in DeviceID.REMOTES:
         return SkyController(ip, c2d_port, d2c_port)
-    elif device_id == DeviceID.MAMBO:
+    elif device_id in DeviceID.MAMBO_FAMILY:
         return Mambo(ip, c2d_port, d2c_port)
+    elif device_id in DeviceID.ANAFI_FAMILY:
+        return Anafi(ip, c2d_port, d2c_port)
     return None

@@ -3,8 +3,8 @@ import sys
 import struct
 
 MY_PATH, _ = os.path.split(os.path.realpath(__file__))
-ARSDK_PATH=os.path.join(MY_PATH,'..', 'arsdk-xml')
-ARCOMMANDS_PATH=os.path.join(ARSDK_PATH, 'xml')
+ARSDK_PATH = os.path.join(MY_PATH, '..', 'arsdk-xml')
+ARCOMMANDS_PATH = os.path.join(ARSDK_PATH, 'xml')
 
 sys.path.append(ARSDK_PATH)
 
@@ -22,23 +22,26 @@ arsdkparser.finalize_ftrs(_ctx)
 class CommandError(Exception):
     def __init__(self, msg):
         self.value = msg
+
     def __str__(self):
         return repr(self.value)
 
+
 _struct_fmt_for_type = {
-    'u8'     : 'B',
-    'i8'     : 'b',
-    'u16'    : 'H',
-    'i16'    : 'h',
-    'u32'    : 'I',
-    'i32'    : 'i',
-    'u64'    : 'Q',
-    'i64'    : 'q',
-    'float'  : 'f',
-    'double' : 'd',
-    'string' : 'z',
-    'enum'   : 'i',
+    'u8': 'B',
+    'i8': 'b',
+    'u16': 'H',
+    'i16': 'h',
+    'u32': 'I',
+    'i32': 'i',
+    'u64': 'Q',
+    'i64': 'q',
+    'float': 'f',
+    'double': 'd',
+    'string': 'z',
+    'enum': 'i',
 }
+
 
 def _format_string_for_cmd(cmd):
     ret = '<'
@@ -53,6 +56,7 @@ def _format_string_for_cmd(cmd):
             arg_str_type = arsdkparser.ArArgType.TO_STRING[arg.argType]
         ret += _struct_fmt_for_type[arg_str_type]
     return ret, bool(cmd.args)
+
 
 def _struct_pack(fmt, *args):
     """
@@ -77,8 +81,8 @@ def _struct_unpack(fmt, string):
     like struct.unpack(fmt, string)
     except that a 'z' format is supported to read a null terminated string
     """
-    real_fmt=''
-    null_idx=[]
+    real_fmt = ''
+    null_idx = []
     nbarg = 0
     for i in range(len(fmt)):
         c = fmt[i]
@@ -106,6 +110,7 @@ def _struct_unpack(fmt, string):
             ret.append(i)
     return tuple(ret)
 
+
 def pack_command(s_proj, s_cls, s_cmd, *args):
     """
     Pack a command into a string.
@@ -116,11 +121,11 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
     - s_cmd  : Name of the command within the class
     - *args  : Arguments of the command.
 
-    If the project, the class or the command can not be found in the command table,
-    a CommandError will be raised.
+    If the project, the class or the command can not be found in the command
+    table, a CommandError will be raised.
 
-    If the number and type of arguments in *arg do not match the expected ones, a
-    CommandError will be raised.
+    If the number and type of arguments in *arg do not match the expected ones,
+    a CommandError will be raised.
 
     Return the command string, the command recommanded buffer and the command
     recommanded timeout policy.
@@ -131,7 +136,9 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
     cls = None
     clsid = 0
     cmd = None
-    # Let an exception be raised if we do not know the command or if the format is bad
+    # Let an exception be raised if we do not know the command
+    # or if the format is bad
+
     # Find the project
     if s_proj in _ctx.projectsByName:
         proj = _ctx.projectsByName[s_proj]
@@ -140,27 +147,30 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
     if proj is None and feat is None:
         raise CommandError('Unknown project ' + s_proj)
 
-    if proj: # Project
+    if proj:  # Project
         projid = proj.projectId
         # Find the class
         if s_cls in proj.classesByName:
             cls = proj.classesByName[s_cls]
         if cls is None:
-            raise CommandError('Unknown class ' + s_cls + ' in project ' + s_proj)
+            raise CommandError('Unknown class ' + s_cls +
+                               ' in project ' + s_proj)
         clsid = cls.classId
 
         # Find the command
         if s_cmd in cls.cmdsByName:
             cmd = cls.cmdsByName[s_cmd]
         if cmd is None:
-            raise CommandError('Unknown command ' + s_cmd + ' in class ' + s_cls + ' of project ' + s_proj)
-    elif feat: # Feature
+            raise CommandError('Unknown command ' + s_cmd +
+                               ' in class ' + s_cls + ' of project ' + s_proj)
+    elif feat:  # Feature
         projid = feat.featureId
         # Find the command
         if s_cmd in feat.cmdsByName:
             cmd = feat.cmdsByName[s_cmd]
         if cmd is None:
-            raise CommandError('Unknown command ' + s_cmd + ' in feature ' + s_proj)
+            raise CommandError('Unknown command ' +
+                               s_cmd + ' in feature ' + s_proj)
 
     ret = struct.pack('<BBH', projid, clsid, cmd.cmdId)
     argsfmt, needed = _format_string_for_cmd(cmd)
@@ -180,8 +190,8 @@ def pack_command(s_proj, s_cls, s_cmd, *args):
         except struct.error:
             raise CommandError('Bad type for arguments')
 
-
     return ret, cmd.bufferType, cmd.timeoutPolicy
+
 
 def unpack_command(buf):
     """
@@ -190,8 +200,9 @@ def unpack_command(buf):
     Arguments:
     - buf : The packed command
 
-    Return a dictionnary describing the command, and a boolean indicating whether the
-    command is known. If the boolean is False, then the dictionnary is {}
+    Return a dictionnary describing the command, and a boolean indicating
+    whether the command is known.
+    If the boolean is False, then the dictionnary is {}
 
     Return dictionnary format:
     {
@@ -219,7 +230,8 @@ def unpack_command(buf):
     feat = None
     cls = None
     cmd = None
-    # Let an exception be raised if we do not know the command or if the format is bad
+    # Let an exception be raised if we do not know the command
+    # or if the format is bad
 
     # Find the project
     if i_proj in _ctx.projectsById:
@@ -256,17 +268,20 @@ def unpack_command(buf):
         try:
             args = _struct_unpack(argsfmt, buf[4:])
         except struct.error:
-            raise CommandError('Bad input buffers (arguments do not match the command)')
+            raise CommandError(
+                'Bad input buffers (arguments do not match the command)')
 
     ret = {
-        'name'     : '%s.%s.%s' % (proj.name if proj else feat.name, cls.name if cls else '', cmd.name),
-        'proj'     : proj.name if proj else feat.name,
-        'class'    : cls.name if cls else '',
-        'cmd'      : cmd.name,
-        'listtype' : cmd.listType,
-        'listtype_str' : arsdkparser.ArCmdListType.TO_STRING[cmd.listType],
-        'args'     : {},
-        'arg0'     : '',
+        'name': '%s.%s.%s' % (proj.name if proj else feat.name,
+                              cls.name if cls else '',
+                              cmd.name),
+        'proj': proj.name if proj else feat.name,
+        'class': cls.name if cls else '',
+        'cmd': cmd.name,
+        'listtype': cmd.listType,
+        'listtype_str': arsdkparser.ArCmdListType.TO_STRING[cmd.listType],
+        'args': {},
+        'arg0': '',
     }
 
     for i in range(len(args)):
